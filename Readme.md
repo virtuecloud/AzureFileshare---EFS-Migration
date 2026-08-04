@@ -36,6 +36,32 @@ You'll need the NFS share's:
 
 ---
 
+## 3.1 Azure Network Security Group (NSG) Rules
+
+The DataSync Agent VM requires specific Network Security Group (NSG) rules on its Subnet/NIC:
+
+### Outbound Rules:
+- **Port 443 (TCP)**: Source `VirtualNetwork` -> Destination `Internet` (Action: `Allow`)
+  - *Role*: Enables outbound control plane communication and TLS-encrypted data streaming to AWS DataSync endpoints (`datasync.<region>.amazonaws.com`).
+- **Ports 2049, 111 (TCP/UDP)**: Source `VirtualNetwork` -> Destination `VirtualNetwork` / Storage Private Endpoint (Action: `Allow`)
+  - *Role*: Enables mounting and traversing the Azure Files NFS share over NFS/RPC.
+
+### Inbound Rules:
+- **Port 80 (TCP)**: Source `VirtualNetwork` (or Admin IP) -> Destination `Agent_VM_IP` (Action: `Allow`)
+  - *Role*: Temporary rule used only during setup to retrieve the agent's `activationKey`. Delete this rule after activation.
+- **Port 22 (TCP)**: Restrict to internal jumpbox/admin IP or disable if not needed.
+- **Default Inbound**: All unsolicited inbound traffic from the internet is **blocked** by default (`DenyAllInBound`).
+
+---
+
+## 3.2 Azure NAT Gateway Setup (Enterprise Egress without Public IP)
+
+For banking and enterprise clients where assigning a Public IP directly to a VM NIC is prohibited:
+
+An **Azure NAT Gateway** provides **outbound-only** internet access (Port 443 HTTPS) for the DataSync Agent VM while keeping the VM 100% private and blocking 100% of unsolicited inbound internet connections.
+
+---
+
 ## 4. Deploying the DataSync agent (Azure VM)
 
 Use AWS's official automation: https://github.com/aws-samples/aws-datasync-deploy-agent-azure
